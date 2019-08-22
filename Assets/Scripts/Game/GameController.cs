@@ -34,6 +34,7 @@ namespace ARPeerToPeerSample.Game
 
             _menuViewLogic.ConnectionButtonPressed += OnConnectionButtonPressed;
             _menuViewLogic.ChangeColorButtonPressed += OnChangeColorAndSendMessage;
+            _menuViewLogic.HostButtonPressed += OnHostSendMessage;
         }
 
         private void OnServiceFound(string serviceAddress)
@@ -52,6 +53,28 @@ namespace ARPeerToPeerSample.Game
         }
 
         private void OnMessageReceived(byte[] message)
+        {
+            byte messageType = message[0];
+            byte[] messageBytes = new byte[message.Length - 1];
+            Array.Copy(message, 1, messageBytes, 0, message.Length - 1);
+
+            switch (messageType)
+            {
+                case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendColor:
+                    ReceivedColor(messageBytes);
+                    break;
+                case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SetHost:
+                    break;
+                case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendMovement:
+                    break;
+                case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.ParticleRPC:
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private void ReceivedColor(byte[] message)
         {
             string color = Encoding.UTF8.GetString(message);
             print("received color: " + color);
@@ -79,7 +102,17 @@ namespace ARPeerToPeerSample.Game
             SetColor(_cube.GetComponent<Renderer>(), StringToColor(colorToSend));
 
             byte[] colorToSendBytes = Encoding.UTF8.GetBytes(colorToSend);
-            _networkManager.SendMessage(colorToSendBytes);
+
+            byte[] colorMessage = new byte[colorToSendBytes.Length + 1];
+            colorMessage[0] = (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendColor;
+
+            Buffer.BlockCopy(colorToSendBytes, 0, colorMessage, 0, colorToSendBytes.Length);
+            _networkManager.SendMessage(colorMessage);
+        }
+
+        private void OnHostSendMessage()
+        {
+
         }
 
         // todo: this is pretty dumb. just send the color bits

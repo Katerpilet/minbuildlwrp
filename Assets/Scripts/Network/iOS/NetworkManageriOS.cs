@@ -5,6 +5,7 @@ namespace ARPeerToPeerSample.Network
 {
     public class NetworkManageriOS : NetworkManagerBase
     {
+    
         public NetworkManageriOS()
         {
             // todo: clean these up

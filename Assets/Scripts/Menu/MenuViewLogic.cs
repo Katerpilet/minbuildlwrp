@@ -20,6 +20,8 @@ public class MenuViewLogic : MonoBehaviour
 
     public Action ChangeColorButtonPressed;
 
+    public Action HostButtonPressed;
+
     private void Awake()
     {
         _connectionButton.gameObject.SetActive(false);
@@ -51,5 +53,10 @@ public class MenuViewLogic : MonoBehaviour
     public void OnColorChangeButtonPressed()
     {
         ChangeColorButtonPressed?.Invoke();
+    }
+
+    public void OnHostButtonPressed()
+    {
+        HostButtonPressed?.Invoke();
     }
 }

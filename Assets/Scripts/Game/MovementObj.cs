@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class MovementObj : MonoBehaviour
 {
-    private bool hasNetworkAuthority = true;
+    private bool hasNetworkAuthority = false;
     private float netSpeed = 0.05f; //MS in seconds (TODO - fix hardcoded value)
     private float lerpDelta = 0f; //used for intepolating server values on client
 
