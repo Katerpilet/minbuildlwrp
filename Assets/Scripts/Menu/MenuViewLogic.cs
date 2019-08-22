@@ -13,14 +13,12 @@ public class MenuViewLogic : MonoBehaviour
     [SerializeField, Tooltip("Connection status textfield")]
     private Text _connectionStatusText;
 
-    [SerializeField, Tooltip("Text box to show plane ids")]
-    private Text _planeListText;
+    [SerializeField, Tooltip("Connection debug textfield")]
+    private Text _debugStatusText;
 
     public Action ConnectionButtonPressed;
 
     public Action ChangeColorButtonPressed;
-
-    public Action SendWorldMapButtonPressed;
 
     private void Awake()
     {
@@ -45,28 +43,13 @@ public class MenuViewLogic : MonoBehaviour
         _connectionStatusText.text = "Connected";
     }
 
+    public void SetStateDebugInfo(string debugInfo)
+    {
+        _debugStatusText.text = debugInfo;
+    }
+
     public void OnColorChangeButtonPressed()
     {
         ChangeColorButtonPressed?.Invoke();
-    }
-
-    public void OnSendWorldMapButtonPressed()
-    {
-#if UNITY_IOS
-        SendWorldMapButtonPressed?.Invoke();
-#else
-        Debug.Log("World map not supported on this platform");
-#endif
-    }
-
-    public void UpdatePlaneList(string[] planeIds)
-    {
-        string planeIdConcat = string.Empty;
-        for (int i = 0; i < planeIds.Length; ++i)
-        {
-            planeIdConcat += planeIds[i] + "\r\n";
-        }
-
-        _planeListText.text = planeIdConcat;
     }
 }

@@ -2,20 +2,11 @@
 using System;
 using System.Text;
 using UnityEngine;
-using UnityEngine.XR.ARFoundation;
-using UnityEngine.XR.ARSubsystems;
 
 namespace ARPeerToPeerSample.Game
 {
     public class GameController : MonoBehaviour
     {
-        private enum GameState
-        {
-            Searching,
-            PlaneFound,
-            SearchingForSharedPlane
-        }
-
         private NetworkManagerBase _networkManager;
 
         [SerializeField, Tooltip("Wifi object for Android")]
@@ -24,103 +15,25 @@ namespace ARPeerToPeerSample.Game
         [SerializeField, Tooltip("Menu view logic object")]
         private MenuViewLogic _menuViewLogic;
 
-        [SerializeField, Tooltip("Anchor object")]
-        private GameObject _anchorPrefab;
+        [SerializeField, Tooltip("Cube object")]
+        private GameObject _cube;
 
-        [SerializeField]
-        private ARHitController _arHitController;
-
-        [SerializeField, Tooltip("AR Foundation Session")]
-        private ARSession _arSession;
-
-        [SerializeField]
-        private ARPlaneManager _planeManager;
-
-        [SerializeField, Tooltip("Relative spawned object prefab")]
-        private GameObject _anchoredObjectsToSpawn;
-
-        private GameObject _anchor;
-        private ARPlane _arPlane;
-        private TrackableId _planeToFind;
-        private GameState _gameState;
-        private bool _downLastFrame = false;
         private void Awake()
         {
 #if UNITY_ANDROID
             GameObject androidNetworkGO = Instantiate(_androidWifiObject);
             _networkManager = new NetworkManagerAndroid(androidNetworkGO.GetComponent<WifiDirectImpl>());
 #elif UNITY_IOS
-            _networkManager = new NetworkManageriOS(_arSession);
+            _networkManager = new NetworkManageriOS();
 #endif
+           // _networkManager = new NetworkManageriOS(); //REMOVE (ONLY FOR DEBUG)
             _networkManager.ServiceFound += OnServiceFound;
             _networkManager.ConnectionEstablished += OnConnectionEstablished;
-            _networkManager.ColorChangeMessageRecieved += OnColorChangeMessageReceived;
-            _networkManager.AnchorRecieved += OnAnchorRecieved;
-            _networkManager.ObjectSpawned += OnObjectSpawned;
+            _networkManager.MessageReceived += OnMessageReceived;
             _networkManager.Start();
 
             _menuViewLogic.ConnectionButtonPressed += OnConnectionButtonPressed;
             _menuViewLogic.ChangeColorButtonPressed += OnChangeColorAndSendMessage;
-            _menuViewLogic.SendWorldMapButtonPressed += OnSendWorldMap;
-            _planeManager.planesChanged += OnPlanesChanged;
-
-            _anchor = Instantiate(_anchorPrefab);
-            _anchor.SetActive(false);
-
-            _gameState = GameState.Searching;
-            // uncomment to unit test packet serialization
-            //print("color serialization result: " + _networkManager.TestColorSerialization() + " network package: "  + _networkManager.TestNetworkPacketSerialization());
-        }
-
-        private void Update()
-        {
-            ARRaycastHit hitInfo; ARPlane trackedPlane;
-            bool wasHit = _arHitController.CheckHitOnPlane(out hitInfo, out trackedPlane);
-            if (!_downLastFrame && wasHit)
-            {
-                _downLastFrame = true;
-                print("found hit on plane: " + hitInfo.pose.position);
-                if (_gameState == GameState.Searching)
-                {
-                    _gameState = GameState.PlaneFound;
-                    SetAnchorToPlane(trackedPlane);
-                    _networkManager.SendAnchor(trackedPlane);
-                    _arPlane = trackedPlane;
-                }
-                else if (_gameState == GameState.PlaneFound)
-                {
-                    GameObject spawnedObject = SpawnObject(hitInfo.pose);
-
-                    // since object is parented to an anchor, we send local info since on recieving end it should also be parented to an anchor
-                    _networkManager.SendModelSpawn(spawnedObject.transform.localPosition, spawnedObject.transform.localRotation);
-                }
-            }
-
-            _downLastFrame = wasHit;
-        }
-
-        private void SetAnchorToPlane(ARPlane plane)
-        {
-            _anchor.SetActive(true);
-            _anchor.transform.SetParent(plane.transform);
-            _anchor.transform.localPosition = new Vector3(_anchor.transform.localPosition.x, _anchor.transform.localPosition.y + 0.25f, _anchor.transform.localPosition.z);
-        }
-
-        private GameObject SpawnObject(Pose pose)
-        {
-            GameObject spawnedObject = Instantiate(_anchoredObjectsToSpawn, pose.position, pose.rotation);
-            spawnedObject.transform.SetParent(_anchor.transform, true);
-            spawnedObject.transform.localPosition = new Vector3(spawnedObject.transform.localPosition.x, spawnedObject.transform.localPosition.y + .25f, spawnedObject.transform.localPosition.z);
-            return spawnedObject;
-        }
-
-        private GameObject SpawnObjectRemote(Pose pose)
-        {
-            GameObject spawnedObject = Instantiate(_anchoredObjectsToSpawn);
-            spawnedObject.transform.SetParent(_anchor.transform, false);
-            spawnedObject.transform.localPosition = new Vector3(pose.position.x, pose.position.y, pose.position.z);
-            spawnedObject.transform.localRotation = new Quaternion(pose.rotation.x, pose.rotation.y, pose.rotation.z, pose.rotation.w);
-            return spawnedObject;
         }
 
         private void OnServiceFound(string serviceAddress)
@@ -138,38 +51,50 @@ namespace ARPeerToPeerSample.Game
             _menuViewLogic.SetStateConnectionEstablished();
         }
 
-        private void OnColorChangeMessageReceived(Color color)
+        private void OnMessageReceived(byte[] message)
         {
-            print("received color: " + color.ToString());
-            SetColor(_anchor.GetComponentInChildren<Renderer>(), color);
+            string color = Encoding.UTF8.GetString(message);
+            print("received color: " + color);
+            SetColor(_cube.GetComponent<Renderer>(), StringToColor(color));
+            _menuViewLogic.SetStateDebugInfo(color);
         }
 
         private void OnChangeColorAndSendMessage()
         {
-            Color colorToSend;
+            string colorToSend = string.Empty;
             int colorToSendNum = UnityEngine.Random.Range(0, 3);
             if (colorToSendNum == 0)
             {
-                colorToSend = Color.red;
+                colorToSend = "red";
             }
             else if (colorToSendNum == 1)
             {
-                colorToSend = Color.blue;
+                colorToSend = "blue";
             }
             else
             {
-                colorToSend = Color.green;
+                colorToSend = "green";
             }
 
-            SetColor(_anchor.GetComponentInChildren<Renderer>(), colorToSend);
-            _networkManager.SendColorMessage(colorToSend);
+            SetColor(_cube.GetComponent<Renderer>(), StringToColor(colorToSend));
+
+            byte[] colorToSendBytes = Encoding.UTF8.GetBytes(colorToSend);
+            _networkManager.SendMessage(colorToSendBytes);
         }
 
-        private void OnSendWorldMap()
+        // todo: this is pretty dumb. just send the color bits
+        private Color StringToColor(string color)
         {
-            if (_networkManager is NetworkManageriOS networkManageriOS)
+            switch (color)
             {
-                networkManageriOS.SendWorldMap();
+                case "red":
+                    return Color.red;
+                case "blue":
+                    return Color.blue;
+                case "green":
+                    return Color.green;
+                default:
+                    return Color.magenta;
             }
         }
 
@@ -182,47 +107,6 @@ namespace ARPeerToPeerSample.Game
 
             // You can cache a reference to the renderer to avoid searching for it.
             renderer.SetPropertyBlock(block);
-        }
-
-        private void OnPlanesChanged(ARPlanesChangedEventArgs aRPlanesChangedEventArgs)
-        {
-            string[] planes = new string[_planeManager.trackables.count];
-
-            if (_gameState == GameState.SearchingForSharedPlane && _planeManager.trackables.TryGetTrackable(_planeToFind, out _arPlane))
-            {
-                _gameState = GameState.PlaneFound;
-                SetAnchorToPlane(_arPlane);
-            }
-
-            int counter = 0;
-            foreach (ARPlane plane in _planeManager.trackables)
-            {
-                planes[counter] = plane.trackableId.ToString();
-            }
-
-            _menuViewLogic.UpdatePlaneList(planes);
-        }
-
-        private void OnAnchorRecieved(TrackableId trackableId)
-        {
-            ARPlane anchorPlane;
-            if (_planeManager.trackables.TryGetTrackable(trackableId, out anchorPlane))
-            {
-                _arPlane = anchorPlane;
-                SetAnchorToPlane(_arPlane);
-                _gameState = GameState.PlaneFound;
-            }
-            else
-            {
-                _planeToFind = trackableId;
-                _gameState = GameState.SearchingForSharedPlane;
-            }
-        }
-
-        private void OnObjectSpawned(Pose objectPose)
-        {
-            // even if plane has not synced yet, anchor still exists
-            SpawnObjectRemote(objectPose);
         }
     }
 }
