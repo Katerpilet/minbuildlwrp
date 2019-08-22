@@ -28,7 +28,7 @@ namespace ARPeerToPeerSample.Game
 #elif UNITY_IOS
             _networkManager = new NetworkManageriOS();
 #endif
-           // _networkManager = new NetworkManageriOS(); //REMOVE (ONLY FOR DEBUG)
+            _networkManager = new NetworkManageriOS(); //REMOVE (ONLY FOR DEBUG)
             _networkManager.ServiceFound += OnServiceFound;
             _networkManager.ConnectionEstablished += OnConnectionEstablished;
             _networkManager.MessageReceived += OnMessageReceived;
@@ -61,19 +61,19 @@ namespace ARPeerToPeerSample.Game
             Array.Copy(message, 1, messageBytes, 0, message.Length - 1);
 
             string debugInfo = Encoding.UTF8.GetString(message);
-            _menuViewLogic.SetStateDebugInfo("should be: " + (int)NetworkManagerBase.NET_MESSAGE_TYPES.SendColor);
+            _menuViewLogic.SetStateDebugInfo("received: " + debugInfo);
 
             switch (messageType)
             {
-                case (int)NetworkManagerBase.NET_MESSAGE_TYPES.SendColor:
+                case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendColor:
                     ReceivedColor(messageBytes);
                     break;
-                case (int)NetworkManagerBase.NET_MESSAGE_TYPES.SetHost:
+                case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SetHost:
                     ReceivedSetHost(messageBytes);
                     break;
-                case (int)NetworkManagerBase.NET_MESSAGE_TYPES.SendMovement:
+                case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendMovement:
                     break;
-                case (int)NetworkManagerBase.NET_MESSAGE_TYPES.ParticleRPC:
+                case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.ParticleRPC:
                     break;
                 default:
                     break;
@@ -124,10 +124,8 @@ namespace ARPeerToPeerSample.Game
             byte[] colorMessage = new byte[colorToSendBytes.Length + 1];
             colorMessage[0] = (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendColor;
 
-            Buffer.BlockCopy(colorToSendBytes, 0, colorMessage, 0, colorToSendBytes.Length);
+            Buffer.BlockCopy(colorToSendBytes, 0, colorMessage, 1, colorToSendBytes.Length); //MUST be offset by one
             _networkManager.SendMessage(colorMessage);
-
-            _menuViewLogic.SetStateDebugInfo("sending: " + colorMessage[0]);
         }
 
         private void OnHostSendMessage()
