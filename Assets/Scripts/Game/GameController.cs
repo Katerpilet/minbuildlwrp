@@ -8,6 +8,8 @@ namespace ARPeerToPeerSample.Game
     public class GameController : MonoBehaviour
     {
         private NetworkManagerBase _networkManager;
+        private bool hasNetworkAuthority = false;
+        private bool hostEstablished = false;
 
         [SerializeField, Tooltip("Wifi object for Android")]
         private GameObject _androidWifiObject;
@@ -58,6 +60,9 @@ namespace ARPeerToPeerSample.Game
             byte[] messageBytes = new byte[message.Length - 1];
             Array.Copy(message, 1, messageBytes, 0, message.Length - 1);
 
+            string debugInfo = Encoding.UTF8.GetString(message);
+            _menuViewLogic.SetStateDebugInfo("got: " + messageType + " should be: " + (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendColor);
+
             switch (messageType)
             {
                 case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendColor:
@@ -79,7 +84,17 @@ namespace ARPeerToPeerSample.Game
             string color = Encoding.UTF8.GetString(message);
             print("received color: " + color);
             SetColor(_cube.GetComponent<Renderer>(), StringToColor(color));
-            _menuViewLogic.SetStateDebugInfo(color);
+        }
+
+        private void ReceivedSetHost(byte[] message)
+        {
+            if (hostEstablished)
+            {
+                return;
+            }
+
+            hostEstablished = true;
+            hasNetworkAuthority = false;
         }
 
         private void OnChangeColorAndSendMessage()
@@ -112,7 +127,16 @@ namespace ARPeerToPeerSample.Game
 
         private void OnHostSendMessage()
         {
+            if (hostEstablished)
+            {
+                return;
+            }
 
+            byte[] setHostMessage = new byte[] { (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SetHost };
+            _networkManager.SendMessage(setHostMessage);
+
+            hostEstablished = true;
+            hasNetworkAuthority = true;
         }
 
         // todo: this is pretty dumb. just send the color bits

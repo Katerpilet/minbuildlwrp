@@ -9,8 +9,6 @@ namespace ARPeerToPeerSample.Network
         public Action<byte[]> MessageReceived;
         public Action ConnectionEstablished;
 
-        private bool hasNetworkAuthority = false;
-
         public enum NET_MESSAGE_TYPES { SendColor, SetHost, SendMovement, ParticleRPC };
 
         public virtual void Connect()

@@ -21,6 +21,8 @@ public class MovementObj : MonoBehaviour
     float cylinderMoveAmount = 30f;
     float cylinderMoveSpeed = 10f;
 
+    ARPeerToPeerSample.Game.GameController gameController;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -29,6 +31,13 @@ public class MovementObj : MonoBehaviour
         cylinderPivot = transform.Find("Pivot").gameObject;
         print(cylinderPivot);
         cylinderAngle = Random.Range(-10f, 10f);
+
+        gameController = GameObject.Find("main").GetComponent<ARPeerToPeerSample.Game.GameController>();
+    }
+
+    void SetNetworkAuthority(bool hasAuth)
+    {
+        hasNetworkAuthority = hasAuth;
     }
 
     // Update is called once per frame
