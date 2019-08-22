@@ -61,7 +61,7 @@ namespace ARPeerToPeerSample.Game
             Array.Copy(message, 1, messageBytes, 0, message.Length - 1);
 
             string debugInfo = Encoding.UTF8.GetString(message);
-            _menuViewLogic.SetStateDebugInfo("got: " + messageType + " should be: " + NetworkManagerBase.NET_MESSAGE_TYPES.SendColor);
+            _menuViewLogic.SetStateDebugInfo("should be: " + (int)NetworkManagerBase.NET_MESSAGE_TYPES.SendColor);
 
             switch (messageType)
             {
@@ -127,7 +127,7 @@ namespace ARPeerToPeerSample.Game
             Buffer.BlockCopy(colorToSendBytes, 0, colorMessage, 0, colorToSendBytes.Length);
             _networkManager.SendMessage(colorMessage);
 
-            _menuViewLogic.SetStateDebugInfo("sending: " + (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendColor);
+            _menuViewLogic.SetStateDebugInfo("sending: " + colorMessage[0]);
         }
 
         private void OnHostSendMessage()
