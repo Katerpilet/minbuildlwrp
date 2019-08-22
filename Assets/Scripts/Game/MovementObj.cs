@@ -35,7 +35,7 @@ public class MovementObj : MonoBehaviour
         gameController = GameObject.Find("main").GetComponent<ARPeerToPeerSample.Game.GameController>();
     }
 
-    void SetNetworkAuthority(bool hasAuth)
+    public void SetNetworkAuthority(bool hasAuth)
     {
         hasNetworkAuthority = hasAuth;
     }

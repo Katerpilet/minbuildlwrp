@@ -61,18 +61,19 @@ namespace ARPeerToPeerSample.Game
             Array.Copy(message, 1, messageBytes, 0, message.Length - 1);
 
             string debugInfo = Encoding.UTF8.GetString(message);
-            _menuViewLogic.SetStateDebugInfo("got: " + messageType + " should be: " + (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendColor);
+            _menuViewLogic.SetStateDebugInfo("got: " + messageType + " should be: " + NetworkManagerBase.NET_MESSAGE_TYPES.SendColor);
 
             switch (messageType)
             {
-                case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendColor:
+                case (int)NetworkManagerBase.NET_MESSAGE_TYPES.SendColor:
                     ReceivedColor(messageBytes);
                     break;
-                case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SetHost:
+                case (int)NetworkManagerBase.NET_MESSAGE_TYPES.SetHost:
+                    ReceivedSetHost(messageBytes);
                     break;
-                case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendMovement:
+                case (int)NetworkManagerBase.NET_MESSAGE_TYPES.SendMovement:
                     break;
-                case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.ParticleRPC:
+                case (int)NetworkManagerBase.NET_MESSAGE_TYPES.ParticleRPC:
                     break;
                 default:
                     break;
@@ -95,6 +96,8 @@ namespace ARPeerToPeerSample.Game
 
             hostEstablished = true;
             hasNetworkAuthority = false;
+
+            SetAuthorityObjects();
         }
 
         private void OnChangeColorAndSendMessage()
@@ -123,6 +126,8 @@ namespace ARPeerToPeerSample.Game
 
             Buffer.BlockCopy(colorToSendBytes, 0, colorMessage, 0, colorToSendBytes.Length);
             _networkManager.SendMessage(colorMessage);
+
+            _menuViewLogic.SetStateDebugInfo("sending: " + (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendColor);
         }
 
         private void OnHostSendMessage()
@@ -137,6 +142,8 @@ namespace ARPeerToPeerSample.Game
 
             hostEstablished = true;
             hasNetworkAuthority = true;
+
+            SetAuthorityObjects();
         }
 
         // todo: this is pretty dumb. just send the color bits
@@ -164,6 +171,16 @@ namespace ARPeerToPeerSample.Game
 
             // You can cache a reference to the renderer to avoid searching for it.
             renderer.SetPropertyBlock(block);
+        }
+
+        private void SetAuthorityObjects()
+        {
+            GameObject[] gameObjects = GameObject.FindGameObjectsWithTag("NetworkMoveObj");
+
+            for(int i = 0; i < gameObjects.Length; i++)
+            {
+                gameObjects[i].GetComponent<MovementObj>()?.SetNetworkAuthority(hasNetworkAuthority);
+            }
         }
     }
 }
