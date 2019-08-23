@@ -23,6 +23,8 @@ public class MovementObj : MonoBehaviour
     float cylinderMoveAmount = 30f;
     float cylinderMoveSpeed = 10f;
 
+    private ParticleSystem turretParticles;
+
     ARPeerToPeerSample.Game.GameController gameController;
 
     // Start is called before the first frame update
@@ -36,6 +38,8 @@ public class MovementObj : MonoBehaviour
 
         originalTurretRot = cylinderPivot.transform.rotation;
         newTurretRot = originalTurretRot;
+
+        turretParticles = cylinderPivot.transform.Find("Cylinder").Find("ShootParticles").GetComponent<ParticleSystem>();
 
         gameController = GameObject.Find("main").GetComponent<ARPeerToPeerSample.Game.GameController>();
     }
@@ -94,5 +98,10 @@ public class MovementObj : MonoBehaviour
         newPos = pos;
         newTurretRot = Quaternion.Euler(turretRot);
         lerpDelta = 0.1f;
+    }
+
+    public void ActivateParticles()
+    {
+        turretParticles.Play();
     }
 }

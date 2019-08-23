@@ -14,6 +14,8 @@ namespace ARPeerToPeerSample.Game
         MovementObj[] netObjectScripts = new MovementObj[0];
         private float netTime = 0;
         private float netRate = 0.05f; //in MS
+        private float randomParticleTimer = 0.05f;
+        private float particleTime = 0f;
 
         [SerializeField, Tooltip("Wifi object for Android")]
         private GameObject _androidWifiObject;
@@ -79,6 +81,7 @@ namespace ARPeerToPeerSample.Game
                     ReceivedMovement(messageBytes);
                     break;
                 case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.ParticleRPC:
+                    ReceivedParticleRPC();
                     break;
                 default:
                     break;
@@ -195,15 +198,42 @@ namespace ARPeerToPeerSample.Game
         private void Update()
         {
             netTime += Time.deltaTime;
+            particleTime += Time.deltaTime;
 
             if (netTime > netRate && hostEstablished && hasNetworkAuthority)
             {
-                netTime = 0;
+                if(particleTime > randomParticleTimer)
+                {
+                    particleTime = 0f;
+                    randomParticleTimer = UnityEngine.Random.Range(1f, 5f);
+                    SendParticleRPC();
+                }
 
                 foreach(GameObject netObj in netObjects)
                 {
-                    SendMovement(netObj.transform.position, netObj.transform.Find("pivot").rotation);
+                    SendMovement(netObj.transform.position, netObj.transform.Find("Pivot").rotation);
                 }
+
+                netTime = 0;
+            }
+        }
+
+        private void ReceivedParticleRPC()
+        {
+            for (int i = 0; i < netObjects.Length; i++)
+            {
+                netObjectScripts[i].ActivateParticles();
+            }
+        }
+
+        private void SendParticleRPC()
+        {
+            byte[] setParticleRPC = new byte[] { (byte)NetworkManagerBase.NET_MESSAGE_TYPES.ParticleRPC };
+            _networkManager.SendMessage(setParticleRPC);
+
+            for (int i = 0; i < netObjects.Length; i++)
+            {
+                netObjectScripts[i].ActivateParticles();
             }
         }
 
