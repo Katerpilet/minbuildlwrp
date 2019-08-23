@@ -76,7 +76,7 @@ namespace ARPeerToPeerSample.Game
                     ReceivedSetHost(messageBytes);
                     break;
                 case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendMovement:
-
+                    ReceivedMovement(messageBytes);
                     break;
                 case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.ParticleRPC:
                     break;
