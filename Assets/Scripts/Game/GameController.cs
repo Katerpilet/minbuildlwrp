@@ -184,7 +184,7 @@ namespace ARPeerToPeerSample.Game
             for (int i = 0; i < netObjects.Length; i++)
             {
                 netObjectScripts[i] = netObjects[i].GetComponent<MovementObj>();
-                netObjectScripts[i]?.SetNetworkAuthority(hasNetworkAuthority);
+                netObjectScripts[i].SetNetworkAuthority(hasNetworkAuthority);
             }
         }
 
@@ -198,7 +198,7 @@ namespace ARPeerToPeerSample.Game
 
                 foreach(GameObject netObj in netObjects)
                 {
-                    SendMovement(netObj.transform.position);
+                    //SendMovement(netObj.transform.position);
                 }
             }
         }
