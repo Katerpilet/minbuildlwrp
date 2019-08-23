@@ -500,6 +500,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: NetworkedMovementObj
       objectReference: {fileID: 0}
+    - target: {fileID: 520560970537300506, guid: a26a9a43cb8528249a6b4d7918c59f58,
+        type: 3}
+      propertyPath: m_TagString
+      value: NetworkMoveObj
+      objectReference: {fileID: 0}
     - target: {fileID: 5785540536513885383, guid: a26a9a43cb8528249a6b4d7918c59f58,
         type: 3}
       propertyPath: m_LocalPosition.x

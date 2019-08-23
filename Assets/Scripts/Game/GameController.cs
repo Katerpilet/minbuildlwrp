@@ -202,7 +202,7 @@ namespace ARPeerToPeerSample.Game
 
                 foreach(GameObject netObj in netObjects)
                 {
-                    //SendMovement(netObj.transform.position);
+                    SendMovement(netObj.transform.position);
                 }
             }
         }
