@@ -685,11 +685,9 @@ MonoBehaviour:
     m_AlignByGeometry: 0
     m_RichText: 1
     m_HorizontalOverflow: 0
-    m_VerticalOverflow: 0
+    m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: 'No Info
-
-'
+  m_Text: No Info
 --- !u!222 &1800896969
 CanvasRenderer:
   m_ObjectHideFlags: 0

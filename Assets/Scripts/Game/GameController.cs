@@ -103,6 +103,8 @@ namespace ARPeerToPeerSample.Game
             hasNetworkAuthority = false;
 
             SetAuthorityObjects();
+
+            _menuViewLogic.SetStateDebugInfo("received: is client");
         }
 
         private void OnChangeColorAndSendMessage()
@@ -147,6 +149,8 @@ namespace ARPeerToPeerSample.Game
             hasNetworkAuthority = true;
 
             SetAuthorityObjects();
+
+            _menuViewLogic.SetStateDebugInfo("received: is server");
         }
 
         // todo: this is pretty dumb. just send the color bits
