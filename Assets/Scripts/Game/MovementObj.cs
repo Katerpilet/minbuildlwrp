@@ -10,6 +10,8 @@ public class MovementObj : MonoBehaviour
 
     private Vector3 originalPos;
     private Vector3 newPos;
+    private Quaternion originalTurretRot;
+    private Quaternion newTurretRot;
     private float posAngle;
     float x = 0;
     float y = 0;
@@ -30,8 +32,10 @@ public class MovementObj : MonoBehaviour
         newPos = originalPos;
         posAngle = 0f;
         cylinderPivot = transform.Find("Pivot").gameObject;
-        print(cylinderPivot);
         cylinderAngle = Random.Range(-10f, 10f);
+
+        originalTurretRot = cylinderPivot.transform.rotation;
+        newTurretRot = originalTurretRot;
 
         gameController = GameObject.Find("main").GetComponent<ARPeerToPeerSample.Game.GameController>();
     }
@@ -81,11 +85,14 @@ public class MovementObj : MonoBehaviour
     {
         lerpDelta += Mathf.Clamp(Time.deltaTime / netSpeed, 0f, 1f);
         transform.position = Vector3.Lerp(transform.position, newPos, lerpDelta);
+
+        cylinderPivot.transform.rotation = Quaternion.Lerp(cylinderPivot.transform.rotation, newTurretRot, lerpDelta);
     }
 
-    public void NetUpdate(Vector3 pos)
+    public void NetUpdate(Vector3 pos, Vector3 turretRot)
     {
         newPos = pos;
-        lerpDelta = 0f;
+        newTurretRot = Quaternion.Euler(turretRot);
+        lerpDelta = 0.1f;
     }
 }

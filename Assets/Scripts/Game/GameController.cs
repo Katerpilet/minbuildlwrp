@@ -202,20 +202,26 @@ namespace ARPeerToPeerSample.Game
 
                 foreach(GameObject netObj in netObjects)
                 {
-                    SendMovement(netObj.transform.position);
+                    SendMovement(netObj.transform.position, netObj.transform.Find("pivot").rotation);
                 }
             }
         }
 
-        private void SendMovement(Vector3 pos)
+        private void SendMovement(Vector3 pos, Quaternion turretRot)
         {
-            byte[] posBytes = new byte[13];
+            byte[] posBytes = new byte[25]; //1 + 4*3 + 4*3
 
             posBytes[0] = (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendMovement;
 
+            //obj position
             Buffer.BlockCopy(BitConverter.GetBytes(pos.x), 0, posBytes, 1+ (0 * sizeof(float)), sizeof(float)); //offset by 1
             Buffer.BlockCopy(BitConverter.GetBytes(pos.y), 0, posBytes, 1+ (1 * sizeof(float)), sizeof(float)); //offset by 1
             Buffer.BlockCopy(BitConverter.GetBytes(pos.z), 0, posBytes, 1+ (2 * sizeof(float)), sizeof(float)); //offset by 1
+
+            //turret rotation
+            Buffer.BlockCopy(BitConverter.GetBytes(turretRot.x), 0, posBytes, 1 + (3 * sizeof(float)), sizeof(float)); //offset by 1
+            Buffer.BlockCopy(BitConverter.GetBytes(turretRot.y), 0, posBytes, 1 + (4 * sizeof(float)), sizeof(float)); //offset by 1
+            Buffer.BlockCopy(BitConverter.GetBytes(turretRot.z), 0, posBytes, 1 + (5 * sizeof(float)), sizeof(float)); //offset by 1
 
             _networkManager.SendMessage(posBytes);
         }
@@ -228,7 +234,12 @@ namespace ARPeerToPeerSample.Game
             vect.y = BitConverter.ToSingle(buff, 1 * sizeof(float));
             vect.z = BitConverter.ToSingle(buff, 2 * sizeof(float));
 
-            netObjectScripts[0]?.NetUpdate(vect);
+            Vector3 turretRot = Vector3.zero;
+            turretRot.x = BitConverter.ToSingle(buff, 3 * sizeof(float));
+            turretRot.y = BitConverter.ToSingle(buff, 4 * sizeof(float));
+            turretRot.z = BitConverter.ToSingle(buff, 5 * sizeof(float));
+
+            netObjectScripts[0]?.NetUpdate(vect, turretRot);
         }
     }
 }
