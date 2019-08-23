@@ -24,9 +24,10 @@ public class MovementObj : MonoBehaviour
     ARPeerToPeerSample.Game.GameController gameController;
 
     // Start is called before the first frame update
-    void Start()
+    private void Start()
     {
         originalPos = transform.position;
+        newPos = originalPos;
         posAngle = 0f;
         cylinderPivot = transform.Find("Pivot").gameObject;
         print(cylinderPivot);
@@ -41,7 +42,7 @@ public class MovementObj : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    private void Update()
     {
         if(hasNetworkAuthority)
         {
@@ -53,7 +54,7 @@ public class MovementObj : MonoBehaviour
         }
     }
 
-    void ServerMove()
+    private void ServerMove()
     {
         //game object movement on circle
         posAngle += 1 * Time.deltaTime;
@@ -76,13 +77,13 @@ public class MovementObj : MonoBehaviour
         cylinderPivot.transform.rotation = Quaternion.Euler(new Vector3(90, 0, cylinderAngle));
     }
 
-    void ClientMove()
+    private void ClientMove()
     {
         lerpDelta += Mathf.Clamp(Time.deltaTime / netSpeed, 0f, 1f);
         transform.position = Vector3.Lerp(transform.position, newPos, lerpDelta);
     }
 
-    void NetUpdate(Vector3 pos)
+    public void NetUpdate(Vector3 pos)
     {
         newPos = pos;
         lerpDelta = 0f;

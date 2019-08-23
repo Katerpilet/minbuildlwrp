@@ -10,6 +10,10 @@ namespace ARPeerToPeerSample.Game
         private NetworkManagerBase _networkManager;
         private bool hasNetworkAuthority = false;
         private bool hostEstablished = false;
+        GameObject[] netObjects = new GameObject[0];
+        MovementObj[] netObjectScripts = new MovementObj[0];
+        private float netTime = 0;
+        private float netRate = 0.05f; //in MS
 
         [SerializeField, Tooltip("Wifi object for Android")]
         private GameObject _androidWifiObject;
@@ -28,7 +32,7 @@ namespace ARPeerToPeerSample.Game
 #elif UNITY_IOS
             _networkManager = new NetworkManageriOS();
 #endif
-            _networkManager = new NetworkManageriOS(); //REMOVE (ONLY FOR DEBUG)
+            //_networkManager = new NetworkManageriOS(); //REMOVE (ONLY FOR DEBUG)
             _networkManager.ServiceFound += OnServiceFound;
             _networkManager.ConnectionEstablished += OnConnectionEstablished;
             _networkManager.MessageReceived += OnMessageReceived;
@@ -72,6 +76,7 @@ namespace ARPeerToPeerSample.Game
                     ReceivedSetHost(messageBytes);
                     break;
                 case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendMovement:
+
                     break;
                 case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.ParticleRPC:
                     break;
@@ -173,12 +178,53 @@ namespace ARPeerToPeerSample.Game
 
         private void SetAuthorityObjects()
         {
-            GameObject[] gameObjects = GameObject.FindGameObjectsWithTag("NetworkMoveObj");
+            netObjects = GameObject.FindGameObjectsWithTag("NetworkMoveObj");
+            netObjectScripts = new MovementObj[netObjects.Length];
 
-            for(int i = 0; i < gameObjects.Length; i++)
+            for (int i = 0; i < netObjects.Length; i++)
             {
-                gameObjects[i].GetComponent<MovementObj>()?.SetNetworkAuthority(hasNetworkAuthority);
+                netObjectScripts[i] = netObjects[i].GetComponent<MovementObj>();
+                netObjectScripts[i]?.SetNetworkAuthority(hasNetworkAuthority);
             }
+        }
+
+        private void Update()
+        {
+            netTime += Time.deltaTime;
+
+            if (netTime > netRate && hostEstablished && hasNetworkAuthority)
+            {
+                netTime = 0;
+
+                foreach(GameObject netObj in netObjects)
+                {
+                    SendMovement(netObj.transform.position);
+                }
+            }
+        }
+
+        private void SendMovement(Vector3 pos)
+        {
+            byte[] posBytes = new byte[13];
+
+            posBytes[0] = (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendMovement;
+
+            Buffer.BlockCopy(BitConverter.GetBytes(pos.x), 0, posBytes, 1+ (0 * sizeof(float)), sizeof(float)); //offset by 1
+            Buffer.BlockCopy(BitConverter.GetBytes(pos.y), 0, posBytes, 1+ (1 * sizeof(float)), sizeof(float)); //offset by 1
+            Buffer.BlockCopy(BitConverter.GetBytes(pos.z), 0, posBytes, 1+ (2 * sizeof(float)), sizeof(float)); //offset by 1
+
+            _networkManager.SendMessage(posBytes);
+        }
+
+        private void ReceivedMovement(byte[] message)
+        {
+            byte[] buff = message;
+            Vector3 vect = Vector3.zero;
+            vect.x = BitConverter.ToSingle(buff, 0 * sizeof(float));
+            vect.y = BitConverter.ToSingle(buff, 1 * sizeof(float));
+            vect.z = BitConverter.ToSingle(buff, 2 * sizeof(float));
+
+            netObjectScripts[0]?.NetUpdate(vect);
         }
     }
 }
