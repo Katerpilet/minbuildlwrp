@@ -93,10 +93,10 @@ public class MovementObj : MonoBehaviour
         cylinderPivot.transform.rotation = Quaternion.Lerp(cylinderPivot.transform.rotation, newTurretRot, lerpDelta);
     }
 
-    public void NetUpdate(Vector3 pos, Vector3 turretRot)
+    public void NetUpdate(Vector3 pos, Quaternion turretRot)
     {
         newPos = pos;
-        newTurretRot = Quaternion.Euler(turretRot);
+        newTurretRot = turretRot;
         lerpDelta = 0.1f;
     }
 

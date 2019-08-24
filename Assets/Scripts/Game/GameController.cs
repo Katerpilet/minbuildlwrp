@@ -34,7 +34,7 @@ namespace ARPeerToPeerSample.Game
 #elif UNITY_IOS
             _networkManager = new NetworkManageriOS();
 #endif
-            //_networkManager = new NetworkManageriOS(); //REMOVE (ONLY FOR DEBUG)
+            _networkManager = new NetworkManageriOS(); //REMOVE (ONLY FOR DEBUG)
             _networkManager.ServiceFound += OnServiceFound;
             _networkManager.ConnectionEstablished += OnConnectionEstablished;
             _networkManager.MessageReceived += OnMessageReceived;
@@ -239,7 +239,7 @@ namespace ARPeerToPeerSample.Game
 
         private void SendMovement(Vector3 pos, Quaternion turretRot)
         {
-            byte[] posBytes = new byte[25]; //1 + 4*3 + 4*3
+            byte[] posBytes = new byte[29]; //1 + 4*3 + 4*4
 
             posBytes[0] = (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendMovement;
 
@@ -252,6 +252,7 @@ namespace ARPeerToPeerSample.Game
             Buffer.BlockCopy(BitConverter.GetBytes(turretRot.x), 0, posBytes, 1 + (3 * sizeof(float)), sizeof(float)); //offset by 1
             Buffer.BlockCopy(BitConverter.GetBytes(turretRot.y), 0, posBytes, 1 + (4 * sizeof(float)), sizeof(float)); //offset by 1
             Buffer.BlockCopy(BitConverter.GetBytes(turretRot.z), 0, posBytes, 1 + (5 * sizeof(float)), sizeof(float)); //offset by 1
+            Buffer.BlockCopy(BitConverter.GetBytes(turretRot.w), 0, posBytes, 1 + (6 * sizeof(float)), sizeof(float)); //offset by 1
 
             _networkManager.SendMessage(posBytes);
         }
@@ -264,10 +265,11 @@ namespace ARPeerToPeerSample.Game
             vect.y = BitConverter.ToSingle(buff, 1 * sizeof(float));
             vect.z = BitConverter.ToSingle(buff, 2 * sizeof(float));
 
-            Vector3 turretRot = Vector3.zero;
+            Quaternion turretRot = Quaternion.identity;
             turretRot.x = BitConverter.ToSingle(buff, 3 * sizeof(float));
             turretRot.y = BitConverter.ToSingle(buff, 4 * sizeof(float));
             turretRot.z = BitConverter.ToSingle(buff, 5 * sizeof(float));
+            turretRot.w = BitConverter.ToSingle(buff, 6 * sizeof(float));
 
             netObjectScripts[0]?.NetUpdate(vect, turretRot);
         }
