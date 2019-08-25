@@ -94,7 +94,7 @@ namespace ARPeerToPeerSample.Game
                     ReceiveNetSpawn(messageBytes);
                     break;
                 case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SpawnObjectReq:
-                    RequestSpawnNetObject();
+                    ReceiveSpawnRequest();
                     break;
                 default:
                     break;
@@ -173,8 +173,6 @@ namespace ARPeerToPeerSample.Game
             hostEstablished = true;
             hasNetworkAuthority = false;
 
-            SetAuthorityObjects();
-
             _menuViewLogic.SetStateDebugInfo("received: is client");
         }
 
@@ -191,22 +189,7 @@ namespace ARPeerToPeerSample.Game
             hostEstablished = true;
             hasNetworkAuthority = true;
 
-            SetAuthorityObjects();
-
             _menuViewLogic.SetStateDebugInfo("received: is server");
-        }
-
-
-        private void SetAuthorityObjects()
-        {
-            //netObjects = GameObject.FindGameObjectsWithTag("NetworkMoveObj");
-            //netObjectScripts = new MovementObj[netObjects.Length];
-
-            //for (int i = 0; i < netObjects.Length; i++)
-            //{
-            //    netObjectScripts[i] = netObjects[i].GetComponent<MovementObj>();
-            //    netObjectScripts[i].SetNetworkAuthority(hasNetworkAuthority);
-            //}
         }
 
         private void OnSpawnObject()
@@ -226,6 +209,17 @@ namespace ARPeerToPeerSample.Game
             }
         }
 
+        private void RequestSpawnNetObject()
+        {
+            byte[] reqSpawnMessage = new byte[] { (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SpawnObjectReq };
+            _networkManager.SendMessage(reqSpawnMessage);
+        }
+
+        private void ReceiveSpawnRequest()
+        {
+            SpawnNetObject();
+        }
+
         private void SpawnNetObject()
         {
             GameObject netObj = Instantiate(NetObjectClass, spawnPos, Quaternion.identity);
@@ -242,11 +236,6 @@ namespace ARPeerToPeerSample.Game
             spawnPos.z -= 8f;
 
             SendNetSpawn(netObj);
-        }
-
-        private void RequestSpawnNetObject()
-        {
-            SpawnNetObject();
         }
 
         private void SendNetSpawn(GameObject netObj)
