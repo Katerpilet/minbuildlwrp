@@ -11,6 +11,8 @@ namespace ARPeerToPeerSample.Game
         private NetworkManagerBase _networkManager;
         private bool hasNetworkAuthority = false;
         private bool hostEstablished = false;
+        Dictionary<String, GameObject> netObjectsDict = new Dictionary<String, GameObject>();
+        Dictionary<String, MovementObj> netObjectScriptDict = new Dictionary<string, MovementObj>();
         List<GameObject> netObjects = new List<GameObject>();
         List<MovementObj> netObjectScripts = new List<MovementObj>();
         private float netTime = 0;
@@ -19,7 +21,7 @@ namespace ARPeerToPeerSample.Game
         private float particleTime = 0f;
         private Vector3 spawnPos = new Vector3(-1, -1, -8);
         public GameObject NetObjectClass;
-        private String NetObjName = "NetObj";
+        private String NetObjBaseName = "NetObj";
 
         [SerializeField, Tooltip("Wifi object for Android")]
         private GameObject _androidWifiObject;
@@ -227,12 +229,14 @@ namespace ARPeerToPeerSample.Game
         private void SpawnNetObject()
         {
             GameObject netObj = Instantiate(NetObjectClass, spawnPos, Quaternion.identity);
-            netObj.name = NetObjName + (netObjects.Count);
+            netObj.name = NetObjBaseName + (netObjects.Count);
 
             MovementObj netScript = netObj.GetComponent<MovementObj>();
             netScript.SetNetworkAuthority(hasNetworkAuthority);
 
+            netObjectsDict.Add(netObj.name, netObj);
             netObjects.Add(netObj);
+            netObjectScriptDict.Add(netObj.name, netScript);
             netObjectScripts.Add(netScript);
 
             spawnPos.z -= 8f;
@@ -267,7 +271,7 @@ namespace ARPeerToPeerSample.Game
         private void ReceiveNetSpawn(byte[] message)
         {
             int nameLength = message[0];
-            String NetObjName = Encoding.UTF8.GetString(message, 1, nameLength);
+            String netObjName = Encoding.UTF8.GetString(message, 1, nameLength);
 
             byte[] buff = message;
             spawnPos.x = BitConverter.ToSingle(buff, (1 + nameLength) + (0 * sizeof(float)));
@@ -275,12 +279,14 @@ namespace ARPeerToPeerSample.Game
             spawnPos.z = BitConverter.ToSingle(buff, (1 + nameLength) + (2 * sizeof(float)));
 
             GameObject netObj = Instantiate(NetObjectClass, spawnPos, Quaternion.identity);
-            netObj.name = NetObjName;
+            netObj.name = netObjName;
 
             MovementObj netScript = netObj.GetComponent<MovementObj>();
             netScript.SetNetworkAuthority(hasNetworkAuthority);
 
+            netObjectsDict.Add(netObjName, netObj);
             netObjects.Add(netObj);
+            netObjectScriptDict.Add(netObjName, netScript);
             netObjectScripts.Add(netScript);
         }
 
@@ -300,7 +306,7 @@ namespace ARPeerToPeerSample.Game
 
                 foreach(GameObject netObj in netObjects)
                 {
-                    SendMovement(netObj.transform.position, netObj.transform.Find("Pivot").rotation);
+                    SendMovement(netObj.name, netObj.transform.position, netObj.transform.Find("Pivot").rotation);
                 }
 
                 netTime = 0;
@@ -326,41 +332,50 @@ namespace ARPeerToPeerSample.Game
             }
         }
 
-        private void SendMovement(Vector3 pos, Quaternion turretRot)
+        private void SendMovement(String netObjName, Vector3 pos, Quaternion turretRot)
         {
-            byte[] posBytes = new byte[29]; //1 + 4*3 + 4*4
+            byte[] objName = Encoding.UTF8.GetBytes(netObjName);
+            int nameLength = objName.Length; //convert to bytes + padding for sending byte length
+
+            byte[] posBytes = new byte[nameLength + 1 + 29]; //1 + 4*3 + 4*4
 
             posBytes[0] = (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SendMovement;
+            posBytes[1] = (byte)nameLength;
+
+            Buffer.BlockCopy(objName, 0, posBytes, 2, nameLength); //write obj name
 
             //obj position
-            Buffer.BlockCopy(BitConverter.GetBytes(pos.x), 0, posBytes, 1+ (0 * sizeof(float)), sizeof(float)); //offset by 1
-            Buffer.BlockCopy(BitConverter.GetBytes(pos.y), 0, posBytes, 1+ (1 * sizeof(float)), sizeof(float)); //offset by 1
-            Buffer.BlockCopy(BitConverter.GetBytes(pos.z), 0, posBytes, 1+ (2 * sizeof(float)), sizeof(float)); //offset by 1
+            Buffer.BlockCopy(BitConverter.GetBytes(pos.x), 0, posBytes, (2 + nameLength) + (0 * sizeof(float)), sizeof(float)); //offset by 1
+            Buffer.BlockCopy(BitConverter.GetBytes(pos.y), 0, posBytes, (2 + nameLength) + (1 * sizeof(float)), sizeof(float)); //offset by 1
+            Buffer.BlockCopy(BitConverter.GetBytes(pos.z), 0, posBytes, (2 + nameLength) + (2 * sizeof(float)), sizeof(float)); //offset by 1
 
             //turret rotation
-            Buffer.BlockCopy(BitConverter.GetBytes(turretRot.x), 0, posBytes, 1 + (3 * sizeof(float)), sizeof(float)); //offset by 1
-            Buffer.BlockCopy(BitConverter.GetBytes(turretRot.y), 0, posBytes, 1 + (4 * sizeof(float)), sizeof(float)); //offset by 1
-            Buffer.BlockCopy(BitConverter.GetBytes(turretRot.z), 0, posBytes, 1 + (5 * sizeof(float)), sizeof(float)); //offset by 1
-            Buffer.BlockCopy(BitConverter.GetBytes(turretRot.w), 0, posBytes, 1 + (6 * sizeof(float)), sizeof(float)); //offset by 1
+            Buffer.BlockCopy(BitConverter.GetBytes(turretRot.x), 0, posBytes, (2 + nameLength) + (3 * sizeof(float)), sizeof(float)); //offset by 1
+            Buffer.BlockCopy(BitConverter.GetBytes(turretRot.y), 0, posBytes, (2 + nameLength) + (4 * sizeof(float)), sizeof(float)); //offset by 1
+            Buffer.BlockCopy(BitConverter.GetBytes(turretRot.z), 0, posBytes, (2 + nameLength) + (5 * sizeof(float)), sizeof(float)); //offset by 1
+            Buffer.BlockCopy(BitConverter.GetBytes(turretRot.w), 0, posBytes, (2 + nameLength) + (6 * sizeof(float)), sizeof(float)); //offset by 1
 
             _networkManager.SendMessage(posBytes);
         }
 
         private void ReceivedMovement(byte[] message)
         {
+            int nameLength = message[0];
+            String NetObjName = Encoding.UTF8.GetString(message, 1, nameLength);
+
             byte[] buff = message;
             Vector3 vect = Vector3.zero;
-            vect.x = BitConverter.ToSingle(buff, 0 * sizeof(float));
-            vect.y = BitConverter.ToSingle(buff, 1 * sizeof(float));
-            vect.z = BitConverter.ToSingle(buff, 2 * sizeof(float));
+            vect.x = BitConverter.ToSingle(buff, (1 + nameLength) + (0 * sizeof(float)));
+            vect.y = BitConverter.ToSingle(buff, (1 + nameLength) + (1 * sizeof(float)));
+            vect.z = BitConverter.ToSingle(buff, (1 + nameLength) + (2 * sizeof(float)));
 
             Quaternion turretRot = Quaternion.identity;
-            turretRot.x = BitConverter.ToSingle(buff, 3 * sizeof(float));
-            turretRot.y = BitConverter.ToSingle(buff, 4 * sizeof(float));
-            turretRot.z = BitConverter.ToSingle(buff, 5 * sizeof(float));
-            turretRot.w = BitConverter.ToSingle(buff, 6 * sizeof(float));
+            turretRot.x = BitConverter.ToSingle(buff, (1 + nameLength) + (3 * sizeof(float)));
+            turretRot.y = BitConverter.ToSingle(buff, (1 + nameLength) + (4 * sizeof(float)));
+            turretRot.z = BitConverter.ToSingle(buff, (1 + nameLength) + (5 * sizeof(float)));
+            turretRot.w = BitConverter.ToSingle(buff, (1 + nameLength) + (6 * sizeof(float)));
 
-            netObjectScripts[0]?.NetUpdate(vect, turretRot);
+            netObjectScriptDict[NetObjName]?.NetUpdate(vect, turretRot);
         }
     }
 }
