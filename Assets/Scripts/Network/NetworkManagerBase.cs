@@ -9,7 +9,7 @@ namespace ARPeerToPeerSample.Network
         public Action<byte[]> MessageReceived;
         public Action ConnectionEstablished;
 
-        public enum NET_MESSAGE_TYPES { SendColor, SetHost, SendMovement, ParticleRPC };
+        public enum NET_MESSAGE_TYPES { SendColor, SetHost, SendMovement, ParticleRPC, SpawnObject, SpawnObjectReq };
 
         public virtual void Connect()
         {

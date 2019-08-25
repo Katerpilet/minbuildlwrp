@@ -1,6 +1,7 @@
 ﻿using ARPeerToPeerSample.Network;
 using System;
 using System.Text;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace ARPeerToPeerSample.Game
@@ -10,12 +11,15 @@ namespace ARPeerToPeerSample.Game
         private NetworkManagerBase _networkManager;
         private bool hasNetworkAuthority = false;
         private bool hostEstablished = false;
-        GameObject[] netObjects = new GameObject[0];
-        MovementObj[] netObjectScripts = new MovementObj[0];
+        List<GameObject> netObjects = new List<GameObject>();
+        List<MovementObj> netObjectScripts = new List<MovementObj>();
         private float netTime = 0;
         private float netRate = 0.05f; //in MS
         private float randomParticleTimer = 0.05f;
         private float particleTime = 0f;
+        private Vector3 spawnPos = new Vector3(-1, -1, -8);
+        public GameObject NetObjectClass;
+        private String NetObjName = "NetObj";
 
         [SerializeField, Tooltip("Wifi object for Android")]
         private GameObject _androidWifiObject;
@@ -34,7 +38,7 @@ namespace ARPeerToPeerSample.Game
 #elif UNITY_IOS
             _networkManager = new NetworkManageriOS();
 #endif
-            _networkManager = new NetworkManageriOS(); //REMOVE (ONLY FOR DEBUG)
+            //_networkManager = new NetworkManageriOS(); //REMOVE (ONLY FOR DEBUG)
             _networkManager.ServiceFound += OnServiceFound;
             _networkManager.ConnectionEstablished += OnConnectionEstablished;
             _networkManager.MessageReceived += OnMessageReceived;
@@ -43,6 +47,7 @@ namespace ARPeerToPeerSample.Game
             _menuViewLogic.ConnectionButtonPressed += OnConnectionButtonPressed;
             _menuViewLogic.ChangeColorButtonPressed += OnChangeColorAndSendMessage;
             _menuViewLogic.HostButtonPressed += OnHostSendMessage;
+            _menuViewLogic.SpawnButtonPressed += OnSpawnObject;
         }
 
         private void OnServiceFound(string serviceAddress)
@@ -83,6 +88,12 @@ namespace ARPeerToPeerSample.Game
                 case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.ParticleRPC:
                     ReceivedParticleRPC();
                     break;
+                case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SpawnObject:
+                    ReceiveNetSpawn(messageBytes);
+                    break;
+                case (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SpawnObjectReq:
+                    RequestSpawnNetObject();
+                    break;
                 default:
                     break;
             }
@@ -93,21 +104,6 @@ namespace ARPeerToPeerSample.Game
             string color = Encoding.UTF8.GetString(message);
             print("received color: " + color);
             SetColor(_cube.GetComponent<Renderer>(), StringToColor(color));
-        }
-
-        private void ReceivedSetHost(byte[] message)
-        {
-            if (hostEstablished)
-            {
-                return;
-            }
-
-            hostEstablished = true;
-            hasNetworkAuthority = false;
-
-            SetAuthorityObjects();
-
-            _menuViewLogic.SetStateDebugInfo("received: is client");
         }
 
         private void OnChangeColorAndSendMessage()
@@ -138,24 +134,6 @@ namespace ARPeerToPeerSample.Game
             _networkManager.SendMessage(colorMessage);
         }
 
-        private void OnHostSendMessage()
-        {
-            if (hostEstablished)
-            {
-                return;
-            }
-
-            byte[] setHostMessage = new byte[] { (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SetHost };
-            _networkManager.SendMessage(setHostMessage);
-
-            hostEstablished = true;
-            hasNetworkAuthority = true;
-
-            SetAuthorityObjects();
-
-            _menuViewLogic.SetStateDebugInfo("received: is server");
-        }
-
         // todo: this is pretty dumb. just send the color bits
         private Color StringToColor(string color)
         {
@@ -183,16 +161,127 @@ namespace ARPeerToPeerSample.Game
             renderer.SetPropertyBlock(block);
         }
 
+        private void ReceivedSetHost(byte[] message)
+        {
+            if (hostEstablished)
+            {
+                return;
+            }
+
+            hostEstablished = true;
+            hasNetworkAuthority = false;
+
+            SetAuthorityObjects();
+
+            _menuViewLogic.SetStateDebugInfo("received: is client");
+        }
+
+        private void OnHostSendMessage()
+        {
+            if (hostEstablished)
+            {
+                return;
+            }
+
+            byte[] setHostMessage = new byte[] { (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SetHost };
+            _networkManager.SendMessage(setHostMessage);
+
+            hostEstablished = true;
+            hasNetworkAuthority = true;
+
+            SetAuthorityObjects();
+
+            _menuViewLogic.SetStateDebugInfo("received: is server");
+        }
+
+
         private void SetAuthorityObjects()
         {
-            netObjects = GameObject.FindGameObjectsWithTag("NetworkMoveObj");
-            netObjectScripts = new MovementObj[netObjects.Length];
+            //netObjects = GameObject.FindGameObjectsWithTag("NetworkMoveObj");
+            //netObjectScripts = new MovementObj[netObjects.Length];
 
-            for (int i = 0; i < netObjects.Length; i++)
+            //for (int i = 0; i < netObjects.Length; i++)
+            //{
+            //    netObjectScripts[i] = netObjects[i].GetComponent<MovementObj>();
+            //    netObjectScripts[i].SetNetworkAuthority(hasNetworkAuthority);
+            //}
+        }
+
+        private void OnSpawnObject()
+        {
+            if(!hostEstablished)
             {
-                netObjectScripts[i] = netObjects[i].GetComponent<MovementObj>();
-                netObjectScripts[i].SetNetworkAuthority(hasNetworkAuthority);
+                return;
             }
+
+            if(hasNetworkAuthority)
+            {
+                SpawnNetObject();
+            }
+            else
+            {
+                RequestSpawnNetObject();
+            }
+        }
+
+        private void SpawnNetObject()
+        {
+            GameObject netObj = Instantiate(NetObjectClass, spawnPos, Quaternion.identity);
+            netObj.name = NetObjName + (netObjects.Count);
+
+            MovementObj netScript = netObj.GetComponent<MovementObj>();
+            netScript.SetNetworkAuthority(hasNetworkAuthority);
+
+            netObjects.Add(netObj);
+            netObjectScripts.Add(netScript);
+
+            spawnPos.z -= 8f;
+
+            SendNetSpawn(netObj);
+        }
+
+        private void RequestSpawnNetObject()
+        {
+            SpawnNetObject();
+        }
+
+        private void SendNetSpawn(GameObject netObj)
+        {
+            byte[] objName = Encoding.UTF8.GetBytes(netObj.name);
+            int nameLength = objName.Length; //convert to bytes + padding for sending byte length
+            byte[] objBytes = new byte[nameLength + 1 + 13]; //bytes + 1 + 4*3 + name length + padding for sending name length 
+
+            objBytes[0] = (byte)NetworkManagerBase.NET_MESSAGE_TYPES.SpawnObject;
+            objBytes[1] = (byte)nameLength;
+
+            Buffer.BlockCopy(objName, 0, objBytes, 2, nameLength); //write obj name
+
+            //obj position
+            Buffer.BlockCopy(BitConverter.GetBytes(netObj.transform.position.x), 0, objBytes, (2 + nameLength) + (0 * sizeof(float)), sizeof(float)); //offset by 1
+            Buffer.BlockCopy(BitConverter.GetBytes(netObj.transform.position.y), 0, objBytes, (2 + nameLength) + (1 * sizeof(float)), sizeof(float)); //offset by 1
+            Buffer.BlockCopy(BitConverter.GetBytes(netObj.transform.position.z), 0, objBytes, (2 + nameLength) + (2 * sizeof(float)), sizeof(float)); //offset by 1
+
+            _networkManager.SendMessage(objBytes);
+        }
+
+        private void ReceiveNetSpawn(byte[] message)
+        {
+            int nameLength = message[0];
+            String NetObjName = Encoding.UTF8.GetString(message, 1, nameLength);
+
+            byte[] buff = message;
+            spawnPos.x = BitConverter.ToSingle(buff, (1 + nameLength) + (0 * sizeof(float)));
+            spawnPos.y = BitConverter.ToSingle(buff, (1 + nameLength) + (1 * sizeof(float)));
+            spawnPos.z = BitConverter.ToSingle(buff, (1 + nameLength) + (2 * sizeof(float)));
+
+            GameObject netObj = Instantiate(NetObjectClass, spawnPos, Quaternion.identity);
+            netObj.name = NetObjName;
+
+            MovementObj netScript = netObj.GetComponent<MovementObj>();
+            netScript.SetNetworkAuthority(hasNetworkAuthority);
+
+            netObjects.Add(netObj);
+            netObjectScripts.Add(netScript);
         }
 
         private void Update()
@@ -220,7 +309,7 @@ namespace ARPeerToPeerSample.Game
 
         private void ReceivedParticleRPC()
         {
-            for (int i = 0; i < netObjects.Length; i++)
+            for (int i = 0; i < netObjects.Count; i++)
             {
                 netObjectScripts[i].ActivateParticles();
             }
@@ -231,7 +320,7 @@ namespace ARPeerToPeerSample.Game
             byte[] setParticleRPC = new byte[] { (byte)NetworkManagerBase.NET_MESSAGE_TYPES.ParticleRPC };
             _networkManager.SendMessage(setParticleRPC);
 
-            for (int i = 0; i < netObjects.Length; i++)
+            for (int i = 0; i < netObjects.Count; i++)
             {
                 netObjectScripts[i].ActivateParticles();
             }

@@ -22,6 +22,8 @@ public class MenuViewLogic : MonoBehaviour
 
     public Action HostButtonPressed;
 
+    public Action SpawnButtonPressed;
+
     private void Awake()
     {
         _connectionButton.gameObject.SetActive(false);
@@ -58,5 +60,10 @@ public class MenuViewLogic : MonoBehaviour
     public void OnHostButtonPressed()
     {
         HostButtonPressed?.Invoke();
+    }
+
+    public void OnSpawnButtonPressed()
+    {
+        SpawnButtonPressed?.Invoke();
     }
 }
